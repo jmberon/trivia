@@ -93,9 +93,10 @@ const TriviaApp = () => {
         <p>Category: {q?.category}</p>
         <p>Difficulty: {stars}</p>
         <h1 dangerouslySetInnerHTML={{ __html: q?.question || "" }}></h1>
-        < ol >
-            {q?.all_answers.map((a, id) => <li key={id}>{a}</li>)}
-        </ol>
+
+        <ul>
+            {q?.all_answers.map((a, id) => <li key={id} dangerouslySetInnerHTML={{ __html: a }}></li>)}
+        </ul>
         <button onClick={getQuestion} type="button">Get New Question</button>
     </>
 }

@@ -47347,10 +47347,13 @@ var TriviaApp = function TriviaApp() {
     dangerouslySetInnerHTML: {
       __html: (q === null || q === void 0 ? void 0 : q.question) || ""
     }
-  }), react_1.default.createElement("ol", null, q === null || q === void 0 ? void 0 : q.all_answers.map(function (a, id) {
+  }), react_1.default.createElement("ul", null, q === null || q === void 0 ? void 0 : q.all_answers.map(function (a, id) {
     return react_1.default.createElement("li", {
-      key: id
-    }, a);
+      key: id,
+      dangerouslySetInnerHTML: {
+        __html: a
+      }
+    });
   })), react_1.default.createElement("button", {
     onClick: getQuestion,
     type: "button"
