@@ -36,6 +36,14 @@ interface triviaQuestion {
     all_answers: string[]
 }
 
+enum TRIVIASTATUS {
+    NEW,
+    OPENPOLLS,
+    CLOSEDPOLLS,
+    ANSWERREVEALED,
+    CONCLUDED
+}
+
 const shuffleArray = (array: any[]) => {
     for (let i = array.length - 1; i > 0; i--) {
         let j = Math.floor(Math.random() * (i + 1));
@@ -48,6 +56,9 @@ const shuffleArray = (array: any[]) => {
 const TriviaApp = () => {
 
     const [q, setQuestion] = useState<triviaQuestion>();
+    const [selectedAnswerId, setSelectedAnswerId] = useState<number | undefined>();
+    const [timer, setTimer] = useState(5)
+    const [triviaStatus, setTriviaStatus] = useState<TRIVIASTATUS>(TRIVIASTATUS.NEW)
 
     const getQuestion = () => {
 
@@ -61,21 +72,49 @@ const TriviaApp = () => {
                     let a = [...trivia.incorrect_answers, trivia.correct_answer];
                     shuffleArray(a)
                     trivia.all_answers = a;
-                    console.log(trivia.correct_answer);
                     lastQuestionRef.push(trivia);
                 }
             })
     }
 
+    const openPolls = () => {
+        setTriviaStatus(TRIVIASTATUS.OPENPOLLS)
+
+        const interval = setInterval(() => {
+            if (timer > 0) {
+                setTimer(--timer)
+            } else {
+                setTriviaStatus(TRIVIASTATUS.ANSWERREVEALED);
+                clearInterval(interval);
+                // console.log(interval);
+            }
+        }, 1000)
+    }
+
+    const onClickAnswer = (e: React.MouseEvent<HTMLElement>, a: string, id: number) => {
+        setSelectedAnswerId(id)
+
+        if (a === q?.correct_answer) {
+            console.log("Yayyy");
+        }
+    }
+
     useEffect(() => {
         lastQuestionRef.on('value', function (snapshot) {
+            if (!snapshot.val()) { return; }
             const r: triviaQuestion[] = Object.values(snapshot.val());
-            console.log(r);
             if (r && r.length) {
                 setQuestion(r[0])
+                setTimer(5)
+                setTriviaStatus(TRIVIASTATUS.NEW)
             }
         });
     }, [])
+
+    useEffect(() => {
+
+
+    }, [triviaStatus])
 
     let stars = "⭐";
 
@@ -88,16 +127,24 @@ const TriviaApp = () => {
             break;
     }
 
-
     return <>
-        <p>Category: {q?.category}</p>
-        <p>Difficulty: {stars}</p>
+        <h2 dangerouslySetInnerHTML={{ __html: q?.category || "" }}></h2>
+        <div className="difficulty">
+            <span>Reward: </span>
+            <h2 className="stars">{stars}</h2>
+        </div>
+        <span>{timer > 0 ? `Remaining ${timer}` : `Time's up!`}</span>
         <h1 dangerouslySetInnerHTML={{ __html: q?.question || "" }}></h1>
 
-        <ul>
-            {q?.all_answers.map((a, id) => <li key={id} dangerouslySetInnerHTML={{ __html: a }}></li>)}
-        </ul>
+        <div className="answer-list">
+            {q?.all_answers.map((a, id) => <button onClick={(e) => onClickAnswer(e, a, id)} className={`answer ${id === selectedAnswerId && "answer--selected"}`} key={id}>
+                <b>{`${['A', 'B', 'C', 'D'][id]}. `}</b>
+                <span dangerouslySetInnerHTML={{ __html: a }}></span>
+            </button>)}
+        </div>
+        {triviaStatus === TRIVIASTATUS.ANSWERREVEALED && <h2>Answer: {['A', 'B', 'C', 'D'][q?.all_answers.indexOf(q?.correct_answer || " ") || 5]}. {q?.correct_answer}</h2>}
         <button onClick={getQuestion} type="button">Get New Question</button>
+        <button onClick={openPolls} type="button">Open Polls</button>
     </>
 }
 

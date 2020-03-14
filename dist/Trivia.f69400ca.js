@@ -47286,6 +47286,15 @@ firebase.initializeApp(firebaseConfig); // Get a reference to the database servi
 
 var database = firebase.database();
 var lastQuestionRef = firebase.database().ref('lastQuestion');
+var TRIVIASTATUS;
+
+(function (TRIVIASTATUS) {
+  TRIVIASTATUS[TRIVIASTATUS["NEW"] = 0] = "NEW";
+  TRIVIASTATUS[TRIVIASTATUS["OPENPOLLS"] = 1] = "OPENPOLLS";
+  TRIVIASTATUS[TRIVIASTATUS["CLOSEDPOLLS"] = 2] = "CLOSEDPOLLS";
+  TRIVIASTATUS[TRIVIASTATUS["ANSWERREVEALED"] = 3] = "ANSWERREVEALED";
+  TRIVIASTATUS[TRIVIASTATUS["CONCLUDED"] = 4] = "CONCLUDED";
+})(TRIVIASTATUS || (TRIVIASTATUS = {}));
 
 var shuffleArray = function shuffleArray(array) {
   for (var i = array.length - 1; i > 0; i--) {
@@ -47301,6 +47310,18 @@ var TriviaApp = function TriviaApp() {
       q = _a[0],
       setQuestion = _a[1];
 
+  var _b = react_1.useState(),
+      selectedAnswerId = _b[0],
+      setSelectedAnswerId = _b[1];
+
+  var _c = react_1.useState(5),
+      timer = _c[0],
+      setTimer = _c[1];
+
+  var _d = react_1.useState(TRIVIASTATUS.NEW),
+      triviaStatus = _d[0],
+      setTriviaStatus = _d[1];
+
   var getQuestion = function getQuestion() {
     lastQuestionRef.remove();
     fetch("https://opentdb.com/api.php?amount=1&type=multiple", {
@@ -47315,22 +47336,47 @@ var TriviaApp = function TriviaApp() {
 
         shuffleArray(a);
         trivia.all_answers = a;
-        console.log(trivia.correct_answer);
         lastQuestionRef.push(trivia);
       }
     });
   };
 
+  var openPolls = function openPolls() {
+    setTriviaStatus(TRIVIASTATUS.OPENPOLLS);
+    var interval = setInterval(function () {
+      if (timer > 0) {
+        setTimer(--timer);
+      } else {
+        setTriviaStatus(TRIVIASTATUS.ANSWERREVEALED);
+        clearInterval(interval); // console.log(interval);
+      }
+    }, 1000);
+  };
+
+  var onClickAnswer = function onClickAnswer(e, a, id) {
+    setSelectedAnswerId(id);
+
+    if (a === (q === null || q === void 0 ? void 0 : q.correct_answer)) {
+      console.log("Yayyy");
+    }
+  };
+
   react_1.useEffect(function () {
     lastQuestionRef.on('value', function (snapshot) {
+      if (!snapshot.val()) {
+        return;
+      }
+
       var r = Object.values(snapshot.val());
-      console.log(r);
 
       if (r && r.length) {
         setQuestion(r[0]);
+        setTimer(5);
+        setTriviaStatus(TRIVIASTATUS.NEW);
       }
     });
   }, []);
+  react_1.useEffect(function () {}, [triviaStatus]);
   var stars = "⭐";
 
   switch (q === null || q === void 0 ? void 0 : q.difficulty) {
@@ -47343,21 +47389,39 @@ var TriviaApp = function TriviaApp() {
       break;
   }
 
-  return react_1.default.createElement(react_1.default.Fragment, null, react_1.default.createElement("p", null, "Category: ", q === null || q === void 0 ? void 0 : q.category), react_1.default.createElement("p", null, "Difficulty: ", stars), react_1.default.createElement("h1", {
+  return react_1.default.createElement(react_1.default.Fragment, null, react_1.default.createElement("h2", {
+    dangerouslySetInnerHTML: {
+      __html: (q === null || q === void 0 ? void 0 : q.category) || ""
+    }
+  }), react_1.default.createElement("div", {
+    className: "difficulty"
+  }, react_1.default.createElement("span", null, "Reward: "), react_1.default.createElement("h2", {
+    className: "stars"
+  }, stars)), react_1.default.createElement("span", null, timer > 0 ? "Remaining " + timer : "Time's up!"), react_1.default.createElement("h1", {
     dangerouslySetInnerHTML: {
       __html: (q === null || q === void 0 ? void 0 : q.question) || ""
     }
-  }), react_1.default.createElement("ul", null, q === null || q === void 0 ? void 0 : q.all_answers.map(function (a, id) {
-    return react_1.default.createElement("li", {
-      key: id,
+  }), react_1.default.createElement("div", {
+    className: "answer-list"
+  }, q === null || q === void 0 ? void 0 : q.all_answers.map(function (a, id) {
+    return react_1.default.createElement("button", {
+      onClick: function onClick(e) {
+        return onClickAnswer(e, a, id);
+      },
+      className: "answer " + (id === selectedAnswerId && "answer--selected"),
+      key: id
+    }, react_1.default.createElement("b", null, ['A', 'B', 'C', 'D'][id] + ". "), react_1.default.createElement("span", {
       dangerouslySetInnerHTML: {
         __html: a
       }
-    });
-  })), react_1.default.createElement("button", {
+    }));
+  })), triviaStatus === TRIVIASTATUS.ANSWERREVEALED && react_1.default.createElement("h2", null, "Answer: ", ['A', 'B', 'C', 'D'][(q === null || q === void 0 ? void 0 : q.all_answers.indexOf((q === null || q === void 0 ? void 0 : q.correct_answer) || " ")) || 5], ". ", q === null || q === void 0 ? void 0 : q.correct_answer), react_1.default.createElement("button", {
     onClick: getQuestion,
     type: "button"
-  }, "Get New Question"));
+  }, "Get New Question"), react_1.default.createElement("button", {
+    onClick: openPolls,
+    type: "button"
+  }, "Open Polls"));
 };
 
 react_dom_1.default.render(react_1.default.createElement(TriviaApp, null), document.getElementById('app'));

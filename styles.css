@@ -17,3 +17,35 @@ body, html {
 h1 {
     text-align: center;
 }
+
+/* .difficulty {
+
+} */
+
+.stars {
+    font-size: 2rem;
+    display: inline;
+}
+
+.answer-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+}
+
+.answer {
+    border-radius: 4px;
+    background-color: #FFF;
+    color: #333;
+    flex: 1 1 100%;
+    font-size: 1.5em;
+    margin-bottom: 1rem;
+    padding: 0.5rem 1rem;
+    text-align: left;
+}
+
+.answer--selected {
+    background-color: #ff008f;
+    color: white;
+    font-weight: 600;
+}
