@@ -6,6 +6,7 @@ import ReactDOM from "react-dom";
 import * as firebase from "firebase/app";
 // Add the Firebase products that you want to use
 // require("firebase/firestore");
+import "firebase/auth";
 import "firebase/database";
 
 const firebaseConfig = {
@@ -59,6 +60,7 @@ const TriviaApp = () => {
     const [selectedAnswerId, setSelectedAnswerId] = useState<number | undefined>();
     const [timer, setTimer] = useState(5)
     const [triviaStatus, setTriviaStatus] = useState<TRIVIASTATUS>(TRIVIASTATUS.NEW)
+    const [user, setUser] = useState<firebase.User | null>()
 
     const getQuestion = () => {
 
@@ -99,6 +101,20 @@ const TriviaApp = () => {
         }
     }
 
+    const onSocialLogin = () => {
+
+        let provider = new firebase.auth.GoogleAuthProvider();
+
+        firebase.auth().signInWithPopup(provider).then(function (result) {
+            // // This gives you a Google Access Token. You can use it to access the Google API.
+            // var token = result.credential.accessToken;
+            // // The signed-in user info.
+            // var user = result.user;
+            console.log(result.user);
+
+        }).catch(function (error) { console.log(error) });
+    }
+
     useEffect(() => {
         lastQuestionRef.on('value', function (snapshot) {
             if (!snapshot.val()) { return; }
@@ -128,6 +144,11 @@ const TriviaApp = () => {
     }
 
     return <>
+        <header>
+            <nav>
+                <button type="button" onClick={onSocialLogin}>Log In</button>
+            </nav>
+        </header>
         <h2 dangerouslySetInnerHTML={{ __html: q?.category || "" }}></h2>
         <div className="difficulty">
             <span>Reward: </span>

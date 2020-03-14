@@ -18,9 +18,18 @@ h1 {
     text-align: center;
 }
 
-/* .difficulty {
+header {
+    background-color: #BBB;
+    height: 50px;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
 
-} */
+button {
+    padding: 1em;
+}
 
 .stars {
     font-size: 2rem;
