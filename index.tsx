@@ -24,10 +24,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 
 // Get a reference to the database service
-const database = firebase.database();
-var lastQuestionRef = firebase.database().ref('lastQuestion');
+const lastQuestionRef = firebase.database().ref('lastQuestion');
+const questionsRef = firebase.database().ref('questions');
 
-interface triviaQuestion {
+interface ITriviaQuestion {
     category: string,
     type: string,
     difficulty: string,
@@ -36,13 +36,24 @@ interface triviaQuestion {
     incorrect_answers: string[],
     all_answers: string[]
 }
-
+interface IUser {
+    uid: string,
+    displayName: string,
+    photoURL: string,
+    email: string
+}
 enum TRIVIASTATUS {
     NEW,
     OPENPOLLS,
     CLOSEDPOLLS,
     ANSWERREVEALED,
     CONCLUDED
+}
+
+enum DIFFICULTY {
+    EASY = "easy",
+    MEDIUM = "medium",
+    HARD = "hard"
 }
 
 const shuffleArray = (array: any[]) => {
@@ -56,11 +67,11 @@ const shuffleArray = (array: any[]) => {
 
 const TriviaApp = () => {
 
-    const [q, setQuestion] = useState<triviaQuestion>();
-    const [selectedAnswerId, setSelectedAnswerId] = useState<number | undefined>();
+    const [triviaQuestion, setTriviaQuestion] = useState<ITriviaQuestion>();
+    const [selectedAnswer, setSelectedAnswer] = useState<{ answer?: string, id?: number } | null>();
     const [timer, setTimer] = useState(5)
     const [triviaStatus, setTriviaStatus] = useState<TRIVIASTATUS>(TRIVIASTATUS.NEW)
-    const [user, setUser] = useState<firebase.User | null>()
+    const [user, setUser] = useState<IUser | null>()
 
     const getQuestion = () => {
 
@@ -70,7 +81,7 @@ const TriviaApp = () => {
             .then(data => data.json())
             .then(data => {
                 if (!data.response_code && data.results.length) {
-                    const trivia = data.results[0] as triviaQuestion;
+                    const trivia = data.results[0] as ITriviaQuestion;
                     let a = [...trivia.incorrect_answers, trivia.correct_answer];
                     shuffleArray(a)
                     trivia.all_answers = a;
@@ -94,11 +105,7 @@ const TriviaApp = () => {
     }
 
     const onClickAnswer = (e: React.MouseEvent<HTMLElement>, a: string, id: number) => {
-        setSelectedAnswerId(id)
-
-        if (a === q?.correct_answer) {
-            console.log("Yayyy");
-        }
+        setSelectedAnswer({ answer: a, id })
     }
 
     const onSocialLogin = () => {
@@ -106,39 +113,76 @@ const TriviaApp = () => {
         let provider = new firebase.auth.GoogleAuthProvider();
 
         firebase.auth().signInWithPopup(provider).then(function (result) {
-            // // This gives you a Google Access Token. You can use it to access the Google API.
-            // var token = result.credential.accessToken;
-            // // The signed-in user info.
-            // var user = result.user;
-            console.log(result.user);
-
+            if (result.user) {
+                localStorage.setItem("triviaUser", JSON.stringify(result.user));
+                setUser(result.user as IUser)
+            };
         }).catch(function (error) { console.log(error) });
     }
 
+    // useEffect(() => {
+
+    // })
+
     useEffect(() => {
+        // Handle User
+        const u = localStorage.getItem("triviaUser");
+        if (u) { setUser(JSON.parse(u) as IUser) }
+    }, [])
+
+    useEffect(() => {
+        // Subscribe to last question changes
         lastQuestionRef.on('value', function (snapshot) {
             if (!snapshot.val()) { return; }
-            const r: triviaQuestion[] = Object.values(snapshot.val());
+            const r: ITriviaQuestion[] = Object.values(snapshot.val());
             if (r && r.length) {
-                setQuestion(r[0])
-                setTimer(5)
-                setTriviaStatus(TRIVIASTATUS.NEW)
+                setTriviaQuestion(r[0]);
+                setTimer(5);
+                setTriviaStatus(TRIVIASTATUS.NEW);
+                setSelectedAnswer(null)
             }
         });
     }, [])
 
     useEffect(() => {
 
+        if (triviaStatus === TRIVIASTATUS.ANSWERREVEALED) {
+            let score = 0;
+
+            if (selectedAnswer?.answer === triviaQuestion?.correct_answer) {
+                switch (triviaQuestion?.difficulty) {
+                    case DIFFICULTY.EASY:
+                        score = 1;
+                        break;
+                    case DIFFICULTY.MEDIUM:
+                        score = 2;
+                        break;
+                    case DIFFICULTY.HARD:
+                        score = 3;
+                        break;
+                }
+            }
+
+            const fbQuestion = {
+                question: triviaQuestion?.question,
+                answer: triviaQuestion?.correct_answer,
+                userId: user?.uid,
+                userName: user?.displayName,
+                score
+            }
+
+            questionsRef.push(fbQuestion);
+        }
 
     }, [triviaStatus])
 
     let stars = "⭐";
 
-    switch (q?.difficulty) {
-        case "medium":
+    switch (triviaQuestion?.difficulty) {
+        case DIFFICULTY.MEDIUM:
             stars = "⭐⭐"
             break;
-        case "hard":
+        case DIFFICULTY.HARD:
             stars = "⭐⭐⭐"
             break;
     }
@@ -146,26 +190,30 @@ const TriviaApp = () => {
     return <>
         <header>
             <nav>
-                <button type="button" onClick={onSocialLogin}>Log In</button>
+                <h1>Trivia</h1>
+                {!user && <button type="button" onClick={onSocialLogin}>Log In</button>}
+                {user && <img src={user.photoURL} alt={user.displayName} />}
             </nav>
         </header>
-        <h2 dangerouslySetInnerHTML={{ __html: q?.category || "" }}></h2>
-        <div className="difficulty">
-            <span>Reward: </span>
-            <h2 className="stars">{stars}</h2>
-        </div>
-        <span>{timer > 0 ? `Remaining ${timer}` : `Time's up!`}</span>
-        <h1 dangerouslySetInnerHTML={{ __html: q?.question || "" }}></h1>
+        <main>
+            <h2 dangerouslySetInnerHTML={{ __html: triviaQuestion?.category || "" }}></h2>
+            <div className="difficulty">
+                <span>Reward: </span>
+                <h2 className="stars">{stars}</h2>
+            </div>
+            <span>{timer > 0 ? `Remaining ${timer}` : `Time's up!`}</span>
+            <h1 dangerouslySetInnerHTML={{ __html: triviaQuestion?.question || "" }}></h1>
 
-        <div className="answer-list">
-            {q?.all_answers.map((a, id) => <button onClick={(e) => onClickAnswer(e, a, id)} className={`answer ${id === selectedAnswerId && "answer--selected"}`} key={id}>
-                <b>{`${['A', 'B', 'C', 'D'][id]}. `}</b>
-                <span dangerouslySetInnerHTML={{ __html: a }}></span>
-            </button>)}
-        </div>
-        {triviaStatus === TRIVIASTATUS.ANSWERREVEALED && <h2>Answer: {['A', 'B', 'C', 'D'][q?.all_answers.indexOf(q?.correct_answer || " ") || 5]}. {q?.correct_answer}</h2>}
-        <button onClick={getQuestion} type="button">Get New Question</button>
-        <button onClick={openPolls} type="button">Open Polls</button>
+            <div className="answer-list">
+                {triviaQuestion?.all_answers.map((a, id) => <button onClick={(e) => onClickAnswer(e, a, id)} className={`answer ${id === selectedAnswer?.id && "answer--selected"}`} key={id}>
+                    <b>{`${['A', 'B', 'C', 'D'][id]}. `}</b>
+                    <span dangerouslySetInnerHTML={{ __html: a }}></span>
+                </button>)}
+            </div>
+            {triviaStatus === TRIVIASTATUS.ANSWERREVEALED && <h2>Answer: {['A', 'B', 'C', 'D'][triviaQuestion?.all_answers.indexOf(triviaQuestion?.correct_answer || " ") || 5]}. {triviaQuestion?.correct_answer}</h2>}
+            <button onClick={getQuestion} type="button">Get New Question</button>
+            <button onClick={openPolls} type="button">Open Polls</button>
+        </main>
     </>
 }
 

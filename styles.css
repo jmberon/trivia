@@ -19,7 +19,6 @@ h1 {
 }
 
 header {
-    background-color: #BBB;
     height: 50px;
     width: 100%;
     position: absolute;
@@ -29,6 +28,24 @@ header {
 
 button {
     padding: 1em;
+}
+
+nav {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    height: 100%;
+    padding-right: 0 0.25rem;
+}
+
+nav img {
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+}
+
+main {
+    /* padding-top: 50px; */
 }
 
 .stars {
